@@ -3,7 +3,6 @@ require 'json'
 path = File.join(File.dirname(__FILE__), '../data/products.json')
 file = File.read(path)
 products_hash = JSON.parse(file)
-@prod_reports = {}
 
 # Print today's date
 puts DateTime.now.strftime("%Y-%m-%d-%H:%M")
@@ -27,6 +26,16 @@ class ProductReport
   attr_accessor :title,:description,:brand,:stock,:full_price,:purchases
 
   include(ToyMoney)
+
+  def do_prod_report
+    puts ""
+    puts "Name of Toy: " + @title
+    puts "Toy Retail Price: $" + @full_price
+    puts "Total Toy Purchases: " + get_num_purchases.to_s
+    puts "Total Toy Sales: $" + get_total_sales
+    puts "Avg Toy Sale Price: $" + get_avg_sale_price
+    puts "Avg Toy discount: $" + get_avg_dollar_discount
+  end
 
   def get_num_purchases
     num = 0
@@ -87,8 +96,6 @@ class User
 
   attr_accessor :name,:state
 end
-
-
 
 class BrandReport
   include(ToyMoney)
@@ -168,6 +175,7 @@ end
 
 
 def create_products(hash)
+  prod_reports = {}
   hash["items"].each do |item|
     report = ProductReport.new
     report.title = item["title"]
@@ -190,8 +198,9 @@ def create_products(hash)
         report.purchases << purch
       end
     end
-    @prod_reports[report.title] = report
+    prod_reports[report.title] = report
   end
+  prod_reports
 end
 
 
@@ -211,16 +220,9 @@ puts "|_|                                       "
 # Calculate and print the average price the toy sold for
 # Calculate and print the average discount (% or $) based off the average sales price
 # Print the retail price of the toy
-create_products(products_hash)
-
-@prod_reports.each_value do |prodreport|
-  puts ""
-  puts "Name of Toy: " + prodreport.title
-  puts "Toy Retail Price: $" + prodreport.full_price
-  puts "Total Toy Purchases: " + prodreport.get_num_purchases.to_s
-  puts "Total Toy Sales: $" + prodreport.get_total_sales
-  puts "Avg Toy Sale Price: $" + prodreport.get_avg_sale_price
-  puts "Avg Toy discount: $" + prodreport.get_avg_dollar_discount
+prod_reports = create_products(products_hash)
+prod_reports.each_value do |prodreport|
+  prodreport.do_prod_report
 end
 
 
@@ -237,8 +239,7 @@ end
 # Count and print the number of the brand's toys we stock
 # Calculate and print the average price of the brand's toys
 # Calculate and print the total revenue of all the brand's toy sales combined
-
-@brand_report = BrandReport.new(@prod_reports)
-@brand_report.do_brand_report
+brand_report = BrandReport.new(prod_reports)
+brand_report.do_brand_report
 
 
