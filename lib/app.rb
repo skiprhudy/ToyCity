@@ -3,13 +3,19 @@ require 'json'
 path = File.join(File.dirname(__FILE__), '../data/products.json')
 file = File.read(path)
 products_hash = JSON.parse(file)
-@products = {}
+@prod_reports = {}
 
 # Print today's date
 puts DateTime.now.strftime("%Y-%m-%d-%H:%M")
 
+module ToyMoney
+  def format(value)
+    val = sprintf("%.2f", value)
+    val
+  end
+end
 
-class Product
+class ProductReport
   #for now leaving public accessible
   @title
   @description
@@ -19,6 +25,8 @@ class Product
   @purchases
 
   attr_accessor :title,:description,:brand,:stock,:full_price,:purchases
+
+  include(ToyMoney)
 
   def get_num_purchases
     num = 0
@@ -60,13 +68,6 @@ class Product
     format(avg_discount)
   end
 
-  private
-
-  def format(value)
-    val = sprintf("%.2f", value)
-    val
-  end
-
 end
 
 class Purchase
@@ -87,16 +88,95 @@ class User
   attr_accessor :name,:state
 end
 
+
+
+class BrandReport
+  include(ToyMoney)
+
+  def initialize(prod_reports)
+    @brands = {}
+    prod_reports.each_value do |prod_report|
+      brand = prod_report.brand.to_sym
+      if @brands.has_key?(brand)
+        #don't add key twice but do add this products
+        #information that we need
+        toy_name = prod_report.title.delete(" ").to_sym
+        avg_price = prod_report.get_avg_sale_price.to_f
+        toy_revenue = prod_report.get_total_sales.to_f
+        toy_info = {
+            :avg_toy_price => avg_price,
+            :toy_tot_revenue => toy_revenue
+        }
+        if @brands[brand].has_key?(toy_name)
+          puts "This toy name already exists, overwrite as update"
+          @brands[brand][toy_name] = toy_info
+        else
+          @brands[brand][toy_name] = {}
+          @brands[brand][toy_name] = toy_info
+        end
+
+      else
+        toy_name = prod_report.title.delete(" ").to_sym
+        avg_price = prod_report.get_avg_sale_price.to_f
+        toy_revenue = prod_report.get_total_sales.to_f
+
+        toy_info = {
+          toy_name => {
+              :avg_toy_price => avg_price,
+              :toy_tot_revenue => toy_revenue
+          }
+        }
+        @brands[brand] = toy_info
+      end
+    end
+  end
+
+  def do_brand_report
+    @brands.each do |brand,toy_data|
+      puts ""
+      puts "Brand: " + brand.to_s
+      puts "Number Toys: " + get_num_toys(brand).to_s
+      puts "Avg Toy Price: $" + get_avg_toy_price(brand)
+      puts "Total Toy Sales: $" + get_total_toy_sales(brand)
+    end
+  end
+
+  private
+
+  def get_num_toys(brand)
+    num_toys = @brands[brand].length
+  end
+
+  def get_avg_toy_price(brand)
+    avg_amount = 0.0
+    @brands[brand].each_value do |data|
+      avg_amount += data[:avg_toy_price]
+    end
+    avg = avg_amount / @brands[brand].length
+    format(avg)
+  end
+
+  def get_total_toy_sales(brand)
+    tot_sales = 0.0
+    @brands[brand].each_value do |data|
+      tot_sales += data[:toy_tot_revenue]
+    end
+    format(tot_sales)
+  end
+
+end
+
+
 def create_products(hash)
   hash["items"].each do |item|
-    product = Product.new
-    product.title = item["title"]
-    product.description = item["description"]
-    product.brand = item["brand"]
-    product.stock = item["stock"]
-    product.full_price = item["full-price"]
+    report = ProductReport.new
+    report.title = item["title"]
+    report.description = item["description"]
+    report.brand = item["brand"]
+    report.stock = item["stock"]
+    report.full_price = item["full-price"]
     if item["purchases"] && item["purchases"].length > 0
-      product.purchases = []
+      report.purchases = []
       item["purchases"].each do |purchase|
         purch = Purchase.new
         purch.channel = purchase["channel"]
@@ -107,10 +187,10 @@ def create_products(hash)
         purch.user = User.new
         purch.user.name = purchase['user']['name']
         purch.user.state = purchase['user']['state']
-        product.purchases << purch
+        report.purchases << purch
       end
     end
-    @products[product.title] = product
+    @prod_reports[report.title] = report
   end
 end
 
@@ -124,8 +204,6 @@ puts "| .__/|_|  \\___/ \\__,_|\\__,_|\\___|\\__|___/"
 puts "| |                                       "
 puts "|_|                                       "
 
-create_products(products_hash)
-
 # For each product in the data set:
 # Print the name of the toy
 # Calculate and print the total number of purchases
@@ -133,14 +211,16 @@ create_products(products_hash)
 # Calculate and print the average price the toy sold for
 # Calculate and print the average discount (% or $) based off the average sales price
 # Print the retail price of the toy
-@products.each_value do |product|
+create_products(products_hash)
+
+@prod_reports.each_value do |prodreport|
   puts ""
-  puts "Name of Toy: " + product.title
-  puts "Total Toy Purchases: " + product.get_num_purchases.to_s
-  puts "Total Toy Sales: $" + product.get_total_sales
-  puts "Avg Toy Sale Price: $" + product.get_avg_sale_price
-  puts "Avg Toy discount: $" + product.get_avg_dollar_discount
-  puts "Toy Retail Price: $" + product.full_price
+  puts "Name of Toy: " + prodreport.title
+  puts "Toy Retail Price: $" + prodreport.full_price
+  puts "Total Toy Purchases: " + prodreport.get_num_purchases.to_s
+  puts "Total Toy Sales: $" + prodreport.get_total_sales
+  puts "Avg Toy Sale Price: $" + prodreport.get_avg_sale_price
+  puts "Avg Toy discount: $" + prodreport.get_avg_dollar_discount
 end
 
 
@@ -153,7 +233,12 @@ end
 	puts
 
 # For each brand in the data set:
-  # Print the name of the brand
-  # Count and print the number of the brand's toys we stock
-  # Calculate and print the average price of the brand's toys
-  # Calculate and print the total revenue of all the brand's toy sales combined
+# Print the name of the brand
+# Count and print the number of the brand's toys we stock
+# Calculate and print the average price of the brand's toys
+# Calculate and print the total revenue of all the brand's toy sales combined
+
+@brand_report = BrandReport.new(@prod_reports)
+@brand_report.do_brand_report
+
+
