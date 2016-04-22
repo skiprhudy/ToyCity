@@ -183,10 +183,12 @@ class BrandReport
 
   def get_avg_toy_price(brand)
     avg_amount = 0.0
+    count = 0
     @brands[brand].each_value do |data|
       avg_amount += data[:avg_toy_price]
+      count += 1
     end
-    avg = avg_amount / @brands[brand].length
+    avg = avg_amount / count
     format(avg)
   end
 
@@ -201,7 +203,7 @@ class BrandReport
 end
 
 #######################################
-#so here i am loading this hash data in objects
+#i am loading this hash data in objects
 #that keep the data and provide methods for manipulating the
 #data according to report requirements. i'm using a hash for
 #prod_reports instead of an array because i want more practice
@@ -258,6 +260,10 @@ puts "|_|                                       "
 #i'm calling a procedure to create my ProductReport objects
 #alternatively i could wrap the ProductReport and BrandReport types
 #in a facade pattern class and steer the operations from that.
+#this entire implementation could have been done procedurally
+#passing the products_hash to different standalone methods.
+#i decided not to do it that way though after an initial
+#implementation of printing out the product details.
 prod_reports = create_products(products_hash)
 
 #######################################
