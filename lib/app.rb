@@ -136,10 +136,12 @@ class BrandReport
     prod_reports.each_value do |prod_report|
       brand = prod_report.brand.to_sym
       toy_name = prod_report.title.delete(" ").to_sym
+      toy_stock = prod_report.stock
       avg_price = prod_report.get_avg_sale_price.to_f
       toy_revenue = prod_report.get_total_sales.to_f
       toy_info = {
           toy_name => {
+              :toys_in_stock => toy_stock,
               :avg_toy_price => avg_price,
               :toy_tot_revenue => toy_revenue
           }
@@ -148,6 +150,7 @@ class BrandReport
         #don't add key twice but do add this products
         #information that we need
         toy_info = {
+            :toys_in_stock => toy_stock,
             :avg_toy_price => avg_price,
             :toy_tot_revenue => toy_revenue
         }
@@ -169,7 +172,7 @@ class BrandReport
     @brands.each do |brand,toy_data|
       puts ""
       puts "Brand: " + brand.to_s
-      puts "Number Toys: " + get_num_toys(brand).to_s
+      puts "Number Toys In Stock: " + get_num_toys_in_stock(brand).to_s
       puts "Avg Toy Price: $" + get_avg_toy_price(brand)
       puts "Total Toy Sales: $" + get_total_toy_sales(brand)
     end
@@ -177,8 +180,12 @@ class BrandReport
 
   private
 
-  def get_num_toys(brand)
-    num_toys = @brands[brand].length
+  def get_num_toys_in_stock(brand)
+    stocked = 0
+    @brands[brand].each_value do |brand|
+      stocked += brand[:toys_in_stock]
+    end
+    stocked
   end
 
   def get_avg_toy_price(brand)
